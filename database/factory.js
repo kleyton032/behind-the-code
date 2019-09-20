@@ -15,11 +15,12 @@
 const Factory = use('Factory')
 
 
-Factory.blueprint('App/Models/User', (faker) => {
+Factory.blueprint('App/Models/User', (faker, i , data) => {
  return {
-        name: faker.name.findName(),
-        email: faker.internet.email(),
-        password: faker.internet.password()
+        name: faker.name(),
+        email: faker.email(),
+        password: faker.string(),
+        ...data
    }
 })
  
