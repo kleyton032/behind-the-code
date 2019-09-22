@@ -7,6 +7,7 @@ const Factory = use('Factory')
 const User = use('App/Models/User');
 
 trait('Test/ApiClient')
+trait('DatabaseTransactions')
 
 test('Return Token', async ({ assert, client }) => {
 
@@ -18,9 +19,7 @@ test('Return Token', async ({ assert, client }) => {
     const user = await Factory
     .model('App/Models/User')
     .create(dados)
-
-    console.log(user)
-
+    
     const response = await client
         .post('/sessions')
         .send(dados)
