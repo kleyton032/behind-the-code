@@ -1,7 +1,7 @@
 const Mail = use('Mail')
 const Hash = use('Hash')
 
-const { test, trait, beforeEach, afterEach } = use('Test/Suite')('Forgot Password')
+const { test, trait } = use('Test/Suite')('Forgot Password')
 
 const Factory = use('Factory')
 
@@ -11,16 +11,14 @@ const User = use('App/Models/User');
 trait('Test/ApiClient')
 trait('DatabaseTransactions')
 
-beforeEach(() => {
+//testando envio de e-mail
+test('Reset Password', async ({ assert, client }) => {
+
     Mail.fake()
-})
 
-afterEach(() => {
-    Mail.restore()
-})
+    const email = 'kleyton.joao@gmail.com',
 
-async function generateTokenForgot(client, email) {
-    const user = await Factory
+    user = await Factory
         .model('App/Models/User')
         .create({ email })
 
@@ -30,15 +28,6 @@ async function generateTokenForgot(client, email) {
         .end()
 
     const token = await user.tokens().first()
-    
-    return token
-
-}
-
-//testando envio de e-mail
-test('Reset Password', async ({ assert, client }) => {
-    const email = 'kleyton.joao@gmail.com',
-        token = await generateTokenForgot(client, email)
 
     const recentEmail = Mail.pullRecent()
     assert.equal(recentEmail.message.to[0].address, email)
@@ -48,26 +37,32 @@ test('Reset Password', async ({ assert, client }) => {
         type: 'forgotpassword'
     }, 'object contains property');
 
+    Mail.restore()
+
 })
 
 //chama uma rota /reset(example) recebendo (token, nova senha, comfirmação de senha, senha precisar mudar)
 test('Reset Password created new passaword', async ({ assert, client }) => {
     const email = 'kleyton.joao@gmail.com',
-    { token }   = await generateTokenForgot(client, email)
 
-    console.log(token)
+    user = await Factory.model('App/Models/User').create({ email })
+    const userToken = await Factory.model('App/Models/Token').make()
+
+    await user.tokens().save(userToken)
+
     const response = await client
         .post('/reset')
         .send({
-            token,
+            token: userToken.token,
             password: '123456',
             password_confirmation: '123456'
         })
         .end()
 
-  
+
     response.assertStatus(204)
-    const user = await User.findBy('email', email)
+    //refaz a releitura dos dados de user, não é necessários instanciar novamente...
+    await user.reload()
     const checkPassword = await Hash.verify('123456', user.password)
 
     assert.isTrue(checkPassword)
