@@ -1,5 +1,8 @@
 const Mail = use('Mail')
 const Hash = use('Hash')
+const Database = use('Database')
+
+const { subHours, format } = require('date-fns')
 
 const { test, trait } = use('Test/Suite')('Forgot Password')
 
@@ -18,9 +21,9 @@ test('Reset Password', async ({ assert, client }) => {
 
     const email = 'kleyton.joao@gmail.com',
 
-    user = await Factory
-        .model('App/Models/User')
-        .create({ email })
+        user = await Factory
+            .model('App/Models/User')
+            .create({ email })
 
     await client
         .post('/forgot')
@@ -45,7 +48,7 @@ test('Reset Password', async ({ assert, client }) => {
 test('Reset Password created new passaword', async ({ assert, client }) => {
     const email = 'kleyton.joao@gmail.com',
 
-    user = await Factory.model('App/Models/User').create({ email })
+        user = await Factory.model('App/Models/User').create({ email })
     const userToken = await Factory.model('App/Models/Token').make()
 
     await user.tokens().save(userToken)
@@ -70,3 +73,34 @@ test('Reset Password created new passaword', async ({ assert, client }) => {
 })
 
 //só vai resetar a senha  se o token estiver valido dentro de 2 horas
+test('Reset password in 2 hours', async ({ assert, client }) => {
+
+    const email = 'kleyton.joao@gmail.com',
+
+        user = await Factory.model('App/Models/User').create({ email })
+    const userToken = await Factory.model('App/Models/Token').make()
+
+    await user.tokens().save(userToken)
+
+    const dateReset = format(subHours(new Date(), 5), 'yyyy-MM-dd HH:ii:ss')
+    await Database
+        .table('tokens')
+        .where('token', userToken.token)
+        .update('created_at', dateReset)
+
+    //refaz a releitura dos dados do token, não é necessários instanciar novamente...
+    await userToken.reload()
+
+    const response = await client
+        .post('/reset')
+        .send({
+            token: userToken.token,
+            password: '123456',
+            password_confirmation: '123456'
+        })
+        .end()
+
+
+    response.assertStatus(400)
+
+})
